@@ -1,0 +1,12 @@
+<!doctype html><html lang="ru"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=yes">
+<meta name="theme-color" content="#111816"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="FORMA">
+<meta name="description" content="Личный тренировочный журнал Full Body с умным планированием и историей.">
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" type="image/png" href="icons/forma-192.png"><link rel="apple-touch-icon" href="icons/forma-180.png">
+<link rel="stylesheet" href="style.css"><title>FORMA — тренировки</title></head>
+<body><div class="app">
+<header class="mast"><div class="brand">FOR<span>MA</span><small>TRAINING JOURNAL</small></div><div class="mast-right"><span class="dot"></span><span>ЛОКАЛЬНЫЙ ЖУРНАЛ</span></div></header>
+<main id="view" aria-live="polite"></main>
+<nav class="tabbar" aria-label="Навигация"><button data-tab="today" class="active"><span class="tabicon">⌂</span>Сегодня</button><button data-tab="session"><span class="tabicon">◉</span>Тренировка</button><button data-tab="analytics"><span class="tabicon">▥</span>Прогресс</button><button data-tab="plan"><span class="tabicon">☷</span>План</button><button data-tab="data"><span class="tabicon">⋯</span>Данные</button></nav>
+</div><div id="toast" role="status"></div><div id="dialog"></div><input id="backup-input" type="file" accept="application/json,.json" hidden>
+<script src="engine.js"></script><script src="app.js"></script></body></html>
