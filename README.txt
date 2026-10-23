@@ -1,22 +1,29 @@
-FORMA v2 — iPhone web app (PWA)
+FORMA 3.0 — iPhone PWA / автономный тренировочный журнал
 
-INSTALLATION
-1. Host *all files* in this directory together on any HTTPS static site (e.g. GitHub Pages).
-2. Open the live website in iPhone Safari.
-3. Share > Add to Home Screen > Open as Web App > Add.
-4. Start FORMA from the Home Screen. Once cached, the core app can run offline.
+УСТАНОВКА (GitHub Pages)
+1. Создай публичный репозиторий GitHub, например forma-app.
+2. Загрузи СОДЕРЖИМОЕ данной папки в корень репозитория (index.html, app.js и т. д.).
+3. Settings → Pages → Build and deployment → Deploy from a branch → main → /(root) → Save.
+4. Открой выданный адрес в Safari на iPhone.
+5. «Поделиться» → «На экран Домой» → «Добавить».
 
-NO BACKEND: workout records are stored locally in this web app's own browser storage.
-Use the Data tab to export JSON to Files/iCloud after several sessions. Import can restore data and accepts the previous FORMA v1 backup format. Opening a downloaded .html from Files DOES NOT install the PWA. Existing storage for a downloaded v1 file doesn't migrate automatically; export/import its JSON.
+НЕ загружай вложенную папку, если в Pages выбран /(root): файл index.html должен находиться в корне репозитория.
+Для проверки на компьютере: python3 -m http.server 8000, затем http://localhost:8000/.
 
-SMART SUGGESTIONS
-- Compare multiple sessions of the exact same exercise, not just the last workout.
-- Require two comparable sessions at top of rep range, with recorded 2+ reps in reserve, before proposing a small weight increase.
-- Guard against a jump larger than 10%, poor sleep, low energy, pain, 14+ day breaks, or plateaus.
-- Reduce sets for 25/40-minute days or reduced readiness.
-- Recommendations are NOT instructions. Always use a manageable load, prioritize technique, do not exercise through pain.
+ФУНКЦИИ
+- Один пошаговый сценарий: самочувствие → подходы → отдых → итоги → сохранено.
+- A/B Full Body, короткая и обычная программа, редактирование плана.
+- Локальная история, график повтора, автоматический подбор только при двух подтверждающих занятиях.
+- Реальные доступные веса гантелей и EZ-грифа, таймер отдыха, импорт/экспорт JSON.
+- Без аккаунтов и внешнего сервера. Всё хранится локально в браузере/установленном PWA.
 
-TESTING: run 'node test-engine.js' (pure engine tests).
+ВАЖНО ПРО ДАННЫЕ
+- Для переноса с FORMA 2.0 на другой адрес используй экспорт JSON в версии 2.0, а затем импорт JSON в 3.0.
+- На том же origin новая версия может автоматически прочитать старый локальный журнал.
+- Не удаляй старую версию до проверки импорта. Делай резервные копии в «Файлы»/iCloud Drive.
+- Предпросмотр HTML, открытый из «Файлов», не гарантирует работу локального хранения и PWA.
 
-If hosting under a repository subpath, relative URLs already work.
-No account, paid API, remote AI, or cloud sync.
+БЕЗОПАСНОСТЬ
+- Рекомендации — ориентиры, а не медицинские назначения, не проверка техники.
+- Прекрати упражнения при боли или нестабильности, особенно плеча, и обсуди с врачом/физиотерапевтом.
+- Для роста силы используй комфортные веса и контролируемую технику, без форсирования.

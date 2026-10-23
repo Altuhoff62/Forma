@@ -1,49 +1,51 @@
-/* FORMA decision engine v2 · deterministic, offline, inspectable */
-(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;root.FormaEngine=api})(typeof globalThis!=='undefined'?globalThis:this,function(){
+/* FORMA 3.0 — transparent, deterministic, offline training rules. No model/API calls. */
+(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;root.FormaEngine3=api})(typeof globalThis!=='undefined'?globalThis:this,function(){
 'use strict';
+const num=x=>x===''||x===null||x===undefined?NaN:Number(x);
+const ok=x=>Number.isFinite(num(x));
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
-const num=v=>(v===''||v===null||v===undefined)?NaN:Number(v);
-const valid=n=>Number.isFinite(n);
-const days=(later,earlier)=>Math.max(0,(later-earlier)/86400000);
-const completed=ex=>(ex?.sets||[]).filter(s=>s.done&&valid(num(s.reps))&&num(s.reps)>0);
-const median=ns=>{if(!ns.length)return NaN;const a=[...ns].sort((x,y)=>x-y);return a.length%2?a[(a.length-1)/2]:(a[a.length/2-1]+a[a.length/2])/2};
-function exerciseHistory(sessions,id){return (sessions||[]).filter(s=>s&&Number.isFinite(s.finished)).sort((a,b)=>a.finished-b.finished).flatMap(s=>{const e=(s.exercises||[]).find(x=>x.id===id);const sets=e?completed(e):[];return sets.length?[{time:s.finished,sets,pain:Boolean(e.pain),sessionId:s.id,energy:s.checkin?.energy||'',sleep:s.checkin?.sleep||'',minutes:s.targetMinutes||45}]:[]})}
-function sessionStats(entry){const ws=entry.sets.filter(s=>valid(num(s.weight))&&num(s.weight)>=0&&valid(num(s.reps))&&num(s.reps)>0);const weights=ws.map(s=>num(s.weight));const reps=ws.map(s=>num(s.reps));return {count:ws.length,weight:median(weights),minReps:reps.length?Math.min(...reps):NaN,maxReps:reps.length?Math.max(...reps):NaN,meanReps:reps.length?reps.reduce((a,b)=>a+b,0)/reps.length:NaN,allSameWeight:ws.length>0&&weights.every(v=>Math.abs(v-weights[0])<1e-5),allRirKnown:ws.length>0&&ws.every(s=>valid(num(s.rir))),minRir:Math.min(...ws.map(s=>valid(num(s.rir))?num(s.rir):Infinity))}}
-function suggestion(ex,sessions,checkin={},now=Date.now()){
- const h=exerciseHistory(sessions,ex.id), base={kind:'initial',weight:null,reps:ex.min,sets:ex.sets,confidence:'Нет данных',reason:'Начни с комфортного веса и нескольких повторений в запасе. Не подбираем стартовый вес автоматически.',signals:[],observations:h.length};
- const energy=checkin.energy||'ok',sleep=checkin.sleep||'ok',painNow=checkin.pain===true;
- if(!h.length){if(painNow)return {...base,kind:'caution',reason:'Отмечен дискомфорт или нестабильность. Не выполняй болезненное упражнение; при повторении симптомов обратись к специалисту.'};return base}
- const last=h[h.length-1],m=sessionStats(last),older=h.length>1?sessionStats(h[h.length-2]):null,gap=days(now,last.time),badRecovery=energy==='low'||sleep==='poor';
- const result={kind:'hold',weight:valid(m.weight)?m.weight:null,reps:clamp(valid(m.minReps)?m.minReps:ex.min,ex.min,ex.max),sets:ex.sets,confidence:h.length>=3?'Умеренная':'Предварительная',reason:'Сохрани нагрузку, продолжай улучшать технику и уверенность.',signals:[],observations:h.length};
- if(painNow||last.pain){result.kind='caution';result.confidence='Осторожно';result.reason='Был отмечен дискомфорт или нестабильность. Не повышай нагрузку и не повторяй движение через боль. При повторении симптомов обсуди упражнение со специалистом.';result.signals.push('Дискомфорт');return result}
- if(gap>14){result.kind='reentry';result.confidence='Осторожно';result.reps=ex.min;result.reason=`После перерыва ${Math.floor(gap)} дн. вернись с более лёгким комфортным весом и/или меньшим числом подходов. Прежний вес — только ориентир, не цель.`;result.signals.push('Перерыв');return result}
- if(badRecovery){result.kind='easy';result.confidence='Осторожно';result.sets=Math.max(1,ex.sets-1);result.reason='Сегодня мало энергии или плохо спал. Сократи объём либо перенеси тренировку. Увеличение веса не требуется.';result.signals.push('Восстановление');return result}
- const loggedRir=last.sets.filter(s=>valid(num(s.rir))).map(s=>num(s.rir));
- if(loggedRir.length&&Math.min(...loggedRir)<=1){result.kind='easy';result.reason='Последний раз подходы были близки к отказу. Оставь тот же или меньший вес, сохрани запас 2–3 повторения.';result.signals.push('Высокая нагрузка');return result}
- // Plateau = 3 comparable sessions with flat median reps, not a mandate for more weight.
- if(h.length>=3){const recent=h.slice(-3).map(sessionStats);const comparable=recent.every(x=>x.count>=ex.sets&&x.allSameWeight&&valid(x.weight)&&Math.abs(x.weight-recent[2].weight)<1e-5);if(comparable&&Math.max(...recent.map(x=>x.meanReps))-Math.min(...recent.map(x=>x.meanReps))<0.5){result.signals.push('Без заметной динамики 3 занятия');result.kind='plateau';result.reason='Три сопоставимые тренировки без прироста повторений. Проверь отдых и технику; пока не увеличивай вес.';return result}}
- const fullyLogged=m.count>=ex.sets&&m.allSameWeight&&m.allRirKnown;
- const meetsTop=fullyLogged&&m.minReps>=ex.max&&m.minRir>=2;
- const confirmed=older&&older.count>=ex.sets&&older.allSameWeight&&older.allRirKnown&&older.minReps>=ex.max&&older.minRir>=2&&valid(older.weight)&&Math.abs(m.weight-older.weight)<1e-5;
- if(meetsTop&&confirmed&&num(ex.step)>0&&valid(m.weight)&&m.weight>0){
-  const step=num(ex.step),relative=step/m.weight;
-  if(relative<=0.1){result.kind='raise';result.weight=Math.round((m.weight+step)*100)/100;result.reps=ex.min;result.confidence='Умеренная';result.reason=`Два занятия подряд все ${ex.sets} подхода достигли ${ex.max} повторений с запасом. Можно попробовать минимальный шаг +${step} кг при хорошей технике. Это необязательно.`;result.signals.push('Два подтверждения');return result}
-  result.kind='hold';result.reason='Верх диапазона освоен, но доступный шаг веса слишком велик (>10%). Оставь текущий вес, укрепляй технику или используй меньший шаг.';result.signals.push('Крупный шаг веса');return result
- }
- if(meetsTop){result.kind='hold';result.reps=ex.max;result.reason='Верх диапазона достигнут. Повтори такой результат ещё раз с хорошей техникой, прежде чем пробовать увеличивать вес.';result.signals.push('Первое подтверждение');return result}
- if(!fullyLogged){result.kind='hold';result.reason='Последние данные неполные или рабочие веса различались между подходами. Сохрани комфортный вес; пока слишком рано советовать прибавку.';return result}
- if(m.minReps<ex.min){result.kind='easy';result.reps=ex.min;result.reason='Пока не достигнут нижний предел повторений. Уменьши нагрузку или число подходов, сохраняя хорошую технику.';return result}
- result.kind='reps';result.reps=clamp(m.minReps+1,ex.min,ex.max);result.reason=`Оставь ${m.weight} кг. Если чувствуешь себя хорошо, попробуй выполнить до ${result.reps} повторений без потери техники и запаса.`;
- return result;
+const dayGap=(now,then)=>Math.max(0,(now-then)/86400000);
+const done=e=>(e?.sets||[]).filter(s=>s.done&&ok(s.reps)&&Number(s.reps)>0&&ok(s.weight)&&Number(s.weight)>=0);
+const mean=a=>a.reduce((p,c)=>p+c,0)/a.length;
+function history(sessions,id){return (sessions||[]).filter(s=>s&&Number.isFinite(Number(s.finished))).sort((a,b)=>a.finished-b.finished).flatMap(s=>{const e=(s.exercises||[]).find(e=>e.id===id);const sets=e?done(e):[];return sets.length?[{finished:Number(s.finished),sets,pain:!!e.pain,sessionId:s.id,checkin:s.checkin||{}}]:[]})}
+function measure(h,ex){const a=h.sets;if(!a.length)return null;const weights=a.map(s=>Number(s.weight));const same=weights.every(w=>Math.abs(w-weights[0])<.001);const reps=a.map(s=>Number(s.reps));const rirs=a.map(s=>num(s.rir));return {weight:weights[0],same,sets:a.length,minReps:Math.min(...reps),meanReps:mean(reps),allRir:rirs.every(Number.isFinite),minRir:rirs.every(Number.isFinite)?Math.min(...rirs):null,full:a.length>=clamp(Number(ex.sets)||2,1,5)}}
+function ready(checkin={},last=null,now=Date.now()){
+ if(checkin.pain)return {mode:'pause',label:'Есть дискомфорт',reason:'Не выполняй движения через боль или нестабильность. При повторении симптомов обсуди нагрузку со специалистом.'};
+ if(last&&dayGap(now,last)<1)return {mode:'caution',label:'Недавно была тренировка',reason:'Если мышцы ещё не восстановились, лучше отдохнуть. Для Full Body обычно оставляем хотя бы день между занятиями.'};
+ if(checkin.sleep==='poor'||checkin.energy==='low')return {mode:'light',label:'Облегчённый день',reason:'Можно сократить число подходов или отложить тренировку. Сон важнее выполнения плана любой ценой.'};
+ if(last&&dayGap(now,last)>14)return {mode:'reentry',label:'Возвращение после перерыва',reason:'После долгого перерыва начни с более лёгкой нагрузки и меньшего объёма.'};
+ return {mode:'normal',label:'Обычный режим',reason:'Оставляй запас повторений, выполняй упражнения с контролируемой техникой.'};
 }
-function readiness(checkin={},lastFinished=null,now=Date.now()){
- if(checkin.pain===true)return {mode:'pause',label:'Без болезненных движений',detail:'При боли или нестабильности не выполняй соответствующее упражнение; при повторении симптомов обсуди это со специалистом.'};
- if(lastFinished&&days(now,lastFinished)<1)return {mode:'pause',label:'Сегодня лучше восстановиться',detail:'Тренировка уже была менее суток назад. Отдых — тоже часть программы.'};
- if(checkin.energy==='low'||checkin.sleep==='poor')return {mode:'light',label:'Облегчённый вариант',detail:'Проведи короткую тренировку с меньшим числом подходов или отдохни, если чувствуешь сильную усталость.'};
- if(lastFinished&&days(now,lastFinished)>14)return {mode:'return',label:'После перерыва',detail:'Возвращайся постепенно: меньше объёма и комфортные нагрузки вместо прошлых рекордов.'};
- return {mode:'normal',label:'Обычный режим',detail:'Сосредоточься на технике и последовательном прогрессе.'};
+function allowedWeight(current,ex,equipment){const mode=ex.equipment||'dumbbell';if(mode==='bodyweight')return null;const weights=equipment?.[mode];if(Array.isArray(weights)&&weights.length){const next=[...new Set(weights.map(Number).filter(x=>Number.isFinite(x)&&x>=0))].sort((a,b)=>a-b).find(w=>w>current+.001);return next??null}
+ const step=Number(ex.step);return Number.isFinite(step)&&step>0?Math.round((current+step)*100)/100:null}
+function advise(ex,sessions,checkin={},equipment={},now=Date.now()){
+ const hs=history(sessions,ex.id);const baseline={kind:'initial',weight:null,target:ex.min||8,sets:ex.sets||2,observations:hs.length,confidence:'Нет данных',reason:'Выбери комфортный вес самостоятельно. Первое занятие — ориентир, не проверка максимума.'};
+ if(!hs.length)return checkin.pain?{...baseline,kind:'caution',reason:'Отмечен дискомфорт: не выполняй болезненное движение.'}:baseline;
+ const last=hs[hs.length-1],m=measure(last,ex);if(!m)return baseline;
+ const result={...baseline,kind:'hold',weight:m.weight,target:clamp(m.minReps,ex.min,ex.max),sets:ex.sets,confidence:hs.length>=3?'Умеренная':'Предварительная',reason:'Повтори комфортный вес и работай над контролем движения и повторами.'};
+ if(checkin.pain||last.pain)return {...result,kind:'caution',confidence:'Осторожно',reason:'Отмечалась боль или нестабильность. Не повышай нагрузку и не выполняй упражнение через боль.'};
+ if(dayGap(now,last.finished)>14)return {...result,kind:'reentry',target:ex.min,sets:Math.max(1,ex.sets-1),confidence:'Осторожно',reason:'Был перерыв более двух недель. Начни легче, прежний вес не обязателен.'};
+ if(checkin.sleep==='poor'||checkin.energy==='low')return {...result,kind:'light',sets:Math.max(1,ex.sets-1),reason:'Плохой сон или низкая энергия: сократи подходы или отдохни. Вес увеличивать не нужно.'};
+ if(m.minRir!==null&&m.minRir<=1)return {...result,kind:'hold',reason:'Последний раз было близко к отказу. Не повышай вес, постарайся сохранить запас в 2–3 повтора.'};
+ if(hs.length>=3){const three=hs.slice(-3).map(h=>measure(h,ex));if(three.every(v=>v.full&&v.same&&Math.abs(v.weight-m.weight)<.001)&&three.some(v=>v.minReps<ex.max)&&Math.max(...three.map(v=>v.meanReps))-Math.min(...three.map(v=>v.meanReps))<.5)return {...result,kind:'plateau',reason:'Три сопоставимых занятия без изменения повторений. Это не провал: проверь восстановление и технику, не увеличивай вес автоматически.'}}
+ const strong=x=>x&&x.full&&x.same&&x.allRir&&x.minRir>=2&&x.minReps>=ex.max;
+ const prev=hs.length>1?measure(hs[hs.length-2],ex):null;
+ if(strong(m)&&strong(prev)&&Math.abs(m.weight-prev.weight)<.001&&m.weight>0){const next=allowedWeight(m.weight,ex,equipment);if(next===null)return {...result,kind:'hold',reason:'Два успешных занятия, но следующего доступного веса не найдено. Продолжай улучшать технику.'};const jump=(next-m.weight)/m.weight;if(jump>.1)return {...result,kind:'hold',reason:'Два успешных занятия, но следующий доступный вес требует прибавки более 10%. Пока сохрани текущий вес.'};return {...result,kind:'raise',weight:next,target:ex.min,confidence:'Умеренная',reason:`Два занятия подряд все подходы выполнены в верхней границе диапазона с запасом. Можно попробовать ${next} кг, только если техника стабильна.`}}
+ if(strong(m))return {...result,kind:'confirm',target:ex.max,reason:'Верх диапазона достигнут один раз. Повтори результат прежде, чем прибавлять вес.'};
+ if(!m.full||!m.same)return {...result,kind:'hold',reason:'Не все подходы выполнены или веса различались. Пока недостаточно сопоставимых данных для повышения.'};
+ if(m.minReps<ex.min)return {...result,kind:'light',target:ex.min,reason:'Повторений меньше целевого диапазона. Выбери более лёгкий комфортный вес или меньше подходов.'};
+ return {...result,kind:'reps',target:Math.min(ex.max,m.minReps+1),reason:'Можно попробовать добавить одно повторение в подходе, оставляя 2–3 повтора в запасе.'};
 }
-function plannedSets(exercises,minutes,mode){const count=exercises.length;if(!count)return [];const cap=minutes<=25?4:minutes<=40?5:count;const filtered=exercises.slice(0,cap);const low=mode==='light'||mode==='return';return filtered.map(e=>({...e,sets:Math.min(e.sets,low?1:2)}));}
-function trend(sessions,id){const data=exerciseHistory(sessions,id),recent=data.slice(-5).map(x=>({date:x.time,...sessionStats(x)}));if(recent.length<2)return {status:'new',label:'Мало записей',entries:recent};const a=recent[0],b=recent[recent.length-1];if(!valid(a.weight)||!valid(b.weight))return {status:'mixed',label:'Неполные данные',entries:recent};if(b.weight>a.weight&&b.minReps>=a.minReps)return {status:'improving',label:'Рабочий вес вырос',entries:recent};if(Math.abs(b.weight-a.weight)<1e-5&&b.meanReps>a.meanReps+0.5)return {status:'improving',label:'Повторов стало больше',entries:recent};if(recent.length>=3&&recent.every(x=>Math.abs(x.weight-b.weight)<1e-5)&&Math.max(...recent.map(x=>x.meanReps))-Math.min(...recent.map(x=>x.meanReps))<0.5)return {status:'flat',label:'Показатели стабильны',entries:recent};return {status:'mixed',label:'Смешанная динамика',entries:recent}}
-return {suggestion,readiness,plannedSets,exerciseHistory,sessionStats,trend,days};
+function selectExercises(program,minutes,mode='normal'){
+ const all=(program||[]).map(e=>({...e}));if(!all.length)return[];
+ const limit=minutes<=25?4:minutes<=40?5:all.length;
+ if(all.length<=limit)return all.map(e=>({...e,sets:mode==='light'||mode==='reentry'?Math.min(e.sets,1):e.sets}));
+ // Short sessions contain at least one lower-body movement, avoiding an all-upper workout.
+ let chosen=all.slice(0,limit);
+ if(!chosen.some(e=>e.group==='lower')){const lower=all.find(e=>e.group==='lower');if(lower)chosen[chosen.length-1]=lower}
+ return chosen.map(e=>({...e,sets:mode==='light'||mode==='reentry'?Math.min(e.sets,1):e.sets}));
+}
+function weekCount(sessions,now=Date.now()){const start=now-7*86400000;return(sessions||[]).filter(s=>s.finished>=start&&s.finished<=now).length}
+function trend(sessions,id){const h=history(sessions,id),recent=h.slice(-4);if(recent.length<2)return {kind:'none',label:'Мало данных'};const a=measure(recent[0],{sets:1}),b=measure(recent[recent.length-1],{sets:1});if(!a||!b)return {kind:'none',label:'Мало данных'};if(Math.abs(b.weight-a.weight)<.001){const delta=b.meanReps-a.meanReps;return delta>.45?{kind:'up',label:`+${delta.toFixed(1)} повт. при том же весе`}:delta<-.45?{kind:'down',label:'Меньше повторений при том же весе'}:{kind:'flat',label:'Примерно без изменений'}};return b.weight>a.weight?{kind:'up',label:'Рабочий вес увеличился'}:{kind:'mixed',label:'Использован более лёгкий вес'} }
+return {history,measure,ready,advise,selectExercises,weekCount,trend,allowedWeight,dayGap};
 });
