@@ -1,4 +1,4 @@
-/* FORMA 3.0 — transparent, deterministic, offline training rules. No model/API calls. */
+/* FORMA 3.2 — transparent, deterministic, offline training rules. No model/API calls. */
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;root.FormaEngine3=api})(typeof globalThis!=='undefined'?globalThis:this,function(){
 'use strict';
 const num=x=>x===''||x===null||x===undefined?NaN:Number(x);
@@ -23,7 +23,7 @@ function generatePlateWeights(handle=0,{paired=false,inventory={3:8,2:4,1.5:4},m
   if(a+b+c>maxPerSide)continue;found.add(Math.round((h+2*(3*a+2*b+1.5*c))*100)/100)
  }return [...found].sort((a,b)=>a-b)
 }
-function allowedWeight(current,ex,equipment){const mode=ex.equipment||'dumbbell';if(mode==='bodyweight')return null;const weights=equipment?.[mode];if(Array.isArray(weights)&&weights.length){const next=[...new Set(weights.map(Number).filter(x=>Number.isFinite(x)&&x>=0))].sort((a,b)=>a-b).find(w=>w>current+.001);return next??null}
+function allowedWeight(current,ex,equipment){const mode=ex.equipment||'dumbbell';if(mode==='bodyweight')return null;const weights=equipment?.[mode];if(Array.isArray(weights)&&weights.length){const next=[...new Set(weights.map(Number).filter(x=>Number.isFinite(x)&&x>=0).map(x=>Math.round((x+Number.EPSILON)*100)/100))].sort((a,b)=>a-b).find(w=>w>current+.001);return next??null}
  const step=Number(ex.step);return Number.isFinite(step)&&step>0?Math.round((current+step)*100)/100:null}
 function advise(ex,sessions,checkin={},equipment={},now=Date.now()){
  const hs=history(sessions,ex.id);const baseline={kind:'initial',weight:null,target:ex.min||8,sets:ex.sets||2,observations:hs.length,confidence:'Нет данных',reason:'Выбери комфортный вес самостоятельно. Первое занятие — ориентир, не проверка максимума.'};

@@ -1,16 +1,26 @@
 {
-  "name":"FORMA 3.0 — Training Journal",
-  "short_name":"FORMA",
-  "description":"Личный офлайн-журнал Full Body с последовательным вводом подходов и анализом прогресса",
-  "lang":"ru",
-  "start_url":"./index.html",
-  "scope":"./",
-  "display":"standalone",
-  "orientation":"portrait",
-  "theme_color":"#101715",
-  "background_color":"#101715",
-  "icons":[
-    {"src":"icons/forma-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
-    {"src":"icons/forma-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+  "name": "FORMA 3.2 — Training Journal",
+  "short_name": "FORMA",
+  "description": "Личный офлайн-журнал тренировок: быстрый ввод, доступные веса, прогресс",
+  "lang": "ru",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#101715",
+  "background_color": "#101715",
+  "icons": [
+    {
+      "src": "icons/forma-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/forma-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
   ]
 }

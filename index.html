@@ -7,12 +7,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="FORMA">
-  <meta name="description" content="FORMA 3.1: последовательный журнал силовых тренировок с офлайн-анализом прогресса.">
+  <meta name="description" content="FORMA 3.2: последовательный журнал силовых тренировок с офлайн-анализом прогресса.">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" href="icons/forma-192.png">
   <link rel="apple-touch-icon" href="icons/forma-180.png">
   <link rel="stylesheet" href="style.css">
-  <title>FORMA 3.1 — тренировка в одном экране</title>
+  <title>FORMA 3.2 — тренировка в одном экране</title>
 </head>
 <body>
   <div class="app-shell">
@@ -20,6 +20,7 @@
     <main id="main" aria-live="polite"></main>
     <nav id="navigation" class="bottom-navigation" aria-label="Разделы"></nav>
   </div>
+  <div id="update-notice" hidden><span class="update-description">Доступна новая версия FORMA</span><button data-action="reload-app">Обновить</button><button type="button" data-action="dismiss-update" aria-label="Закрыть уведомление">×</button></div>
   <div id="toast" role="status" aria-live="polite"></div>
   <div id="modal" aria-live="polite"></div>
   <input type="file" id="backup-file" accept=".json,application/json" hidden>
