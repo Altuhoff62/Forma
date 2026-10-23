@@ -16,6 +16,13 @@ function ready(checkin={},last=null,now=Date.now()){
  if(last&&dayGap(now,last)>14)return {mode:'reentry',label:'Возвращение после перерыва',reason:'После долгого перерыва начни с более лёгкой нагрузки и меньшего объёма.'};
  return {mode:'normal',label:'Обычный режим',reason:'Оставляй запас повторений, выполняй упражнения с контролируемой техникой.'};
 }
+function generatePlateWeights(handle=0,{paired=false,inventory={3:8,2:4,1.5:4},maxPerSide=4}={}){
+ const h=Number(handle);if(!Number.isFinite(h)||h<0||h>200)throw Error('Некорректный вес грифа или рукояти');
+ const [aMax,bMax,cMax]=[3,2,1.5].map(w=>Math.min(maxPerSide,Math.floor((Number(inventory[w])||0)/(paired?4:2))));
+ const found=new Set();for(let a=0;a<=aMax;a++)for(let b=0;b<=bMax;b++)for(let c=0;c<=cMax;c++){
+  if(a+b+c>maxPerSide)continue;found.add(Math.round((h+2*(3*a+2*b+1.5*c))*100)/100)
+ }return [...found].sort((a,b)=>a-b)
+}
 function allowedWeight(current,ex,equipment){const mode=ex.equipment||'dumbbell';if(mode==='bodyweight')return null;const weights=equipment?.[mode];if(Array.isArray(weights)&&weights.length){const next=[...new Set(weights.map(Number).filter(x=>Number.isFinite(x)&&x>=0))].sort((a,b)=>a-b).find(w=>w>current+.001);return next??null}
  const step=Number(ex.step);return Number.isFinite(step)&&step>0?Math.round((current+step)*100)/100:null}
 function advise(ex,sessions,checkin={},equipment={},now=Date.now()){
@@ -47,5 +54,5 @@ function selectExercises(program,minutes,mode='normal'){
 }
 function weekCount(sessions,now=Date.now()){const start=now-7*86400000;return(sessions||[]).filter(s=>s.finished>=start&&s.finished<=now).length}
 function trend(sessions,id){const h=history(sessions,id),recent=h.slice(-4);if(recent.length<2)return {kind:'none',label:'Мало данных'};const a=measure(recent[0],{sets:1}),b=measure(recent[recent.length-1],{sets:1});if(!a||!b)return {kind:'none',label:'Мало данных'};if(Math.abs(b.weight-a.weight)<.001){const delta=b.meanReps-a.meanReps;return delta>.45?{kind:'up',label:`+${delta.toFixed(1)} повт. при том же весе`}:delta<-.45?{kind:'down',label:'Меньше повторений при том же весе'}:{kind:'flat',label:'Примерно без изменений'}};return b.weight>a.weight?{kind:'up',label:'Рабочий вес увеличился'}:{kind:'mixed',label:'Использован более лёгкий вес'} }
-return {history,measure,ready,advise,selectExercises,weekCount,trend,allowedWeight,dayGap};
+return {history,measure,ready,advise,selectExercises,weekCount,trend,allowedWeight,dayGap,generatePlateWeights};
 });
